@@ -4,6 +4,8 @@ Windows one-click repair for **Rose LTK Patcher Outdated** and the **VRF00000008
 
 **[Download v1.3 ZIP](https://github.com/Chun0128/rose-patcher-quick-fix/raw/refs/heads/main/downloads/Rose_Patcher_Quick_Fix_v1.3.zip)** · [繁體中文說明](#繁體中文)
 
+**2026-10-31 package cleanup:** The download now contains **9 files instead of 13**. Repair/restore code is unchanged. Removed the optional START.cmd menu and the two reports from the ZIP; merged the Chinese/English guides into README.txt. Test evidence remains in this repository.
+
 ## Quick start
 
 Requires Windows x64, an existing Rose installation, and [7-Zip](https://www.7-zip.org/).
