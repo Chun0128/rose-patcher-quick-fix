@@ -1,0 +1,25 @@
+{
+  "tool_version": "1.3",
+  "upstream_version": "1.29.1",
+  "source": "https://github.com/LeagueToolkit/ltk-manager/releases/tag/v1.29.1",
+  "installer_sha256": "8c8119b0eb8df61fe0697de047f21d55bfe2c4ccf97684945b11b8c9ebd0bd30",
+  "files": {
+    "ltk_patcher_dll.dll": {"bytes": 770328, "sha256": "3dce3ac99e55839559129e32ae9de75ddaec40f310118475248f99c61656ecf5", "signature": "Valid", "publisher": "Natoken LLC"},
+    "ltk_patcher_host.exe": {"bytes": 1238272, "sha256": "23fa1aaeda1a0c743da44227f179084e1fb81c7cd262144a3c8604ffc49d3bc1", "signature": "Valid", "publisher": "Natoken LLC"}
+  },
+  "maximum_game_build_unix": 1793516400,
+  "maximum_game_build_utc": "2026-11-01T07:00:00Z",
+  "in_game_test": {
+    "date": "2026-10-31",
+    "rose_version": "1.4.9",
+    "game_build_unix": 1793387252,
+    "locale": "zh_TW",
+    "mode": "Practice Tool",
+    "champion": "Blitzcrank",
+    "skin_id": 53056,
+    "result": "PASS",
+    "user_confirmed_visible": true,
+    "evidence": ["overlay verified 2 wad(s)", "redirected wad: DATA/FINAL/Localized/Global.zh_TW.wad.client", "redirected wad: DATA/FINAL/Champions/Blitzcrank.wad.client"],
+    "scope": "One computer and one skin; not all configurations or future game versions."
+  }
+}

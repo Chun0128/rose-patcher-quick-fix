@@ -1,0 +1,36 @@
+{
+  "scope": "Core replacement tests used isolated fixtures. Wrapper checks verified game guard, English output, and no-op behavior against the installed pair.",
+  "status": "PASS",
+  "tests": [
+    {
+      "result": "PASS",
+      "name": "Official installer extraction, exact checksums, publisher signatures and game date verified"
+    },
+    {
+      "result": "PASS",
+      "name": "Reject game builds beyond the verified release support limit"
+    },
+    {
+      "result": "PASS",
+      "name": "Back up current files and atomically apply the candidate to an isolated fixture"
+    },
+    {
+      "result": "PASS",
+      "name": "Restore original hashes from manifest and reset target selection for the next operation"
+    },
+    {
+      "result": "PASS",
+      "name": "Roll back both files if the host cannot be replaced"
+    },
+    {
+      "name": "One-click wrapper refuses an active match before download, elevation or file changes",
+      "result": "PASS"
+    },
+    {
+      "name": "Reapplying the correct pair is a no-op and does not create duplicate backups",
+      "result": "PASS"
+    }
+  ],
+  "count": 7,
+  "in_game": "PASS: one Rose 1.4.9 / zh_TW PC, Blitzcrank 53056, 2026-10-31; overlay verification and redirects logged, user confirmed visible."
+}
