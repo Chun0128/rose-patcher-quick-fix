@@ -1,38 +1,49 @@
-# Rose Patcher Quick Fix v1.3
+# Rose Patcher Quick Fix v1.3 — Single CMD
 
-Windows one-click repair for **Rose LTK Patcher Outdated** and the **VRF00000008 host verification** failure, using the original signed files from **LTK Manager 1.29.1**. Includes automatic backup and restore.
+Windows repair for **Rose LTK Patcher Outdated** and the tested **VRF00000008** host verification failure, using the original signed **LTK Manager 1.29.1** patcher pair.
 
-**[Download v1.3 ZIP](https://github.com/Chun0128/rose-patcher-quick-fix/raw/refs/heads/main/downloads/Rose_Patcher_Quick_Fix_v1.3.zip)** · [繁體中文說明](#繁體中文)
+**[Download the two-file ZIP](https://github.com/Chun0128/rose-patcher-quick-fix/raw/refs/heads/main/downloads/Rose_Patcher_Quick_Fix_v1.3.zip)**
 
-**2026-10-31 package cleanup:** The download now contains **9 files instead of 13**. Repair/restore code is unchanged. Removed the optional START.cmd menu and the two reports from the ZIP; merged the Chinese/English guides into README.txt. Test evidence remains in this repository.
+## Only two files
+
+- **Rose_Quick_Fix.cmd** — repair, restore, check and language selection in one file.
+- **README.txt** — short bilingual guide and license.
+
+The CMD works independently: no separate PS1 scripts or other files from this repository are required. It prepares its embedded runtime in a temporary folder and removes it on exit. Backups and the official download cache remain available for later use.
 
 ## Quick start
 
-Requires Windows x64, an existing Rose installation, and [7-Zip](https://www.7-zip.org/).
+Requires Windows x64, an existing Rose installation and [7-Zip](https://www.7-zip.org/).
 
-1. Download and **extract the whole ZIP**.
-2. Finish any match, run **`FIX_NOW_EN.cmd`**, and approve the Windows administrator prompt.
-3. Rose restarts automatically. Select a skin and test in **Practice Tool**.
+1. Extract the ZIP and double-click **Rose_Quick_Fix.cmd**.
+2. Press **L** for English, then **1** to repair. Finish any match first and approve the Windows administrator prompt.
+3. Rose restarts after a successful repair. Test your selected skin in **Practice Tool**.
 
-To undo the change, run **`RESTORE_EN.cmd`**. It restores the previous files; those files may still have the original problem. Keep every file in the extracted folder together.
+Menu: **1 Repair · 2 Restore backup · 3 Check · L Language · 0 Exit**.
+
+Restore returns the previous files, which may still have the original problem.
 
 ## 繁體中文
 
-1. 下載 ZIP 並**全部解壓縮**，電腦需已安裝 Rose 與 [7-Zip](https://www.7-zip.org/)。
-2. 結束對局後，雙擊 **`FIX_NOW.cmd`**，允許 Windows 管理員提示。
-3. Rose 會自動重新開啟，再進**訓練模式**確認造型。
+下載包只有 **Rose_Quick_Fix.cmd** 和 **README.txt** 兩個檔案。
 
-需要還原時雙擊 **`RESTORE.cmd`**。工具會自動備份；對局進行中會停止，檔案已正確時不會重複替換。
+1. 先安裝 Rose 與 [7-Zip](https://www.7-zip.org/)，將 ZIP 解壓縮。
+2. 雙擊 **Rose_Quick_Fix.cmd**，按 **1** 修復，允許管理員提示。
+3. 完成後 Rose 自動重新開啟，再進訓練模式確認造型。
 
-## What changed and what was tested
+按 **2** 還原、**3** 檢查版本、**L** 切換中英文、**0** 離開。請先結束對局。
 
-- Replaces **both** `ltk_patcher_dll.dll` and `ltk_patcher_host.exe` with the matching official **1.29.1** pair. It downloads and extracts the installer without installing or downgrading LTK Manager.
-- Checks exact SHA-256 hashes, valid **Natoken LLC** signatures, and the game executable build timestamp. Original files go to `%LOCALAPPDATA%\RosePatcherFix\backups`; a failed replacement is rolled back.
-- Confirmed on **one Rose 1.4.9 / zh_TW PC on 2026-10-31**, using **Blitzcrank skin 53056** in Practice Tool. Logs showed `overlay verified 2 wad(s)` and successful WAD redirects; the user confirmed the skin appeared. Other skins and systems are not all tested.
-- Supports game builds through **2026-11-01 07:00 UTC / 15:00 Taiwan time**. This compares the game's build timestamp, not your current clock. A later game update may require a newer compatible official patcher.
+## Repair behavior and compatibility
 
-The earlier 1.28.1 workaround was too old for the tested game build. The newer stable patcher passed the date check but rejected Rose with `VRF00000008`; switching to this verified 1.29.1 pair resolved the tested case.
+- Downloads the official 1.29.1 installer and extracts its matching DLL and host without installing or downgrading LTK Manager.
+- Verifies exact SHA-256 hashes, valid **Natoken LLC** signatures and the game executable build timestamp.
+- Backs up both original files under `%LOCALAPPDATA%\RosePatcherFix\backups`; a failed replacement rolls back.
+- Refuses to modify files during a match. The single CMD keeps the same verified patcher selection and support limit.
+- Supports game builds through **2026-11-01 07:00 UTC / 15:00 Taiwan time**. This is a game build limit, not a countdown based on the current clock. A later game update may require another compatible patcher.
 
-[Official LTK 1.29.1 release](https://github.com/LeagueToolkit/ltk-manager/releases/tag/v1.29.1) · [File hashes and test evidence](COMPATIBILITY.json) · [Package checksum](downloads/SHA256SUMS.txt)
+The patcher pair was confirmed on one **Rose 1.4.9 / zh_TW PC on 2026-10-31**, using **Blitzcrank skin 53056** in Practice Tool. Other skins and systems are not all tested. The single-CMD wrapper was validated separately with standalone launch, paths containing Chinese/special characters, language switching, temporary-file cleanup, damaged-payload rejection and isolated repair/restore tests. No new in-game test was performed for this packaging change; UAC and Rose launches were simulated in fixture tests.
 
-This is an independent community tool, not an official Rose or LTK release. This repository contains scripts and documentation; Rose, game assets, and patcher binaries are not redistributed. Upstream patcher files retain their own license.
+[Compatibility evidence](COMPATIBILITY.json) · [Test results](TEST_RESULTS.json) · [Package checksum](downloads/SHA256SUMS.txt) · [Official LTK 1.29.1 release](https://github.com/LeagueToolkit/ltk-manager/releases/tag/v1.29.1)
+
+Independent community tool, not an official Rose or LTK release. Rose, game assets and patcher binaries are not included. The MIT notice is included inside the CMD and README.txt; upstream files retain their own licenses.
+

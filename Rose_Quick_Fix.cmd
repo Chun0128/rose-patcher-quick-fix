@@ -1,9 +1,46 @@
-﻿param(
+@echo off
+setlocal DisableDelayedExpansion
+chcp 65001 >nul
+set "ROSEFIX_CMD_SELF=%~f0"
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop';$rc=0;$work='';$runner='';try{$text=[IO.File]::ReadAllText($env:ROSEFIX_CMD_SELF,[Text.Encoding]::UTF8);$marker=[string][char]13+[char]10+'# ROSEFIX_POWERSHELL_BEGIN'+[char]13+[char]10;$at=$text.IndexOf($marker,[StringComparison]::Ordinal);if($at -lt 0){throw 'Built-in program is missing. Download the CMD again.'};$payload=$text.Substring($at+$marker.Length);$hash=[Security.Cryptography.SHA256]::Create();try{$actual=([BitConverter]::ToString($hash.ComputeHash([Text.Encoding]::UTF8.GetBytes($payload)))).Replace('-','').ToLowerInvariant()}finally{$hash.Dispose()};if($actual -ne 'd48aa4bbd86e5369fdbcf96a54cbfdfa35ba59d4d6812ad455c3852980b839d1'){throw 'The CMD is incomplete or changed. Download it again.'};$base=[IO.Path]::GetFullPath([IO.Path]::Combine([IO.Path]::GetTempPath(),'RoseQuickFix'));$work=[IO.Path]::Combine($base,[guid]::NewGuid().ToString('N'));$null=[IO.Directory]::CreateDirectory($work);$runner=[IO.Path]::Combine($work,'Rose-Quick-Fix.ps1');[IO.File]::WriteAllText($runner,$payload,[Text.UTF8Encoding]::new($true));$global:LASTEXITCODE=0;& $runner;$rc=$LASTEXITCODE}catch{Write-Host $_.Exception.Message -ForegroundColor Red;$rc=1}finally{if($runner){try{[IO.File]::Delete($runner)}catch{}};if($work){try{[IO.Directory]::Delete($work)}catch{}}};exit $rc"
+set "rosefix_exit=%errorlevel%"
+if not "%rosefix_exit%"=="0" pause
+exit /b %rosefix_exit%
+# ROSEFIX_POWERSHELL_BEGIN
+<#
+MIT License
+
+Copyright (c) 2026 Chun0128
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+This license covers this tool's scripts and documentation only. Separately
+downloaded third-party files remain subject to their respective licenses.
+
+#>
+param(
  [ValidateSet('Menu','Check','Apply','Restore')][string]$Action='Menu',
  [string]$RosePath='', [string]$GamePath='', [string]$DataRoot='',
  [ValidateSet('en','zh-TW')][string]$Language='zh-TW',
  [switch]$Child, [string]$ResultFile=''
 )
+$script:RunnerPath=$PSCommandPath
 $ErrorActionPreference='Stop'
 function L([string]$English,[string]$TraditionalChinese) {
  if($script:Language -eq 'zh-TW'){return $TraditionalChinese}
@@ -18,7 +55,58 @@ $script:InstallerHash='8c8119b0eb8df61fe0697de047f21d55bfe2c4ccf97684945b11b8c9e
 $script:Download='https://github.com/LeagueToolkit/ltk-manager/releases/download/v1.29.1/LTK.Manager_1.29.1_x64-setup.exe'
 $script:Eol=[uint32]1793516400
 $script:TargetHashes=$script:Wanted.Clone()
-. (Join-Path $PSScriptRoot 'Patcher-Detection.ps1')
+# Reads original signed files; does not alter DLL code or support dates.
+if(-not ('RosePatcherPeReaderV12' -as [type])) {
+ Add-Type -TypeDefinition @'
+using System;
+using System.IO;
+using System.Text;
+public static class RosePatcherPeReaderV12 {
+ public static uint ReadEol(string path) {
+  byte[] b=File.ReadAllBytes(path);
+  if(b.Length<64 || b[0]!=77 || b[1]!=90) throw new InvalidDataException("Invalid PE file");
+  int pe=BitConverter.ToInt32(b,60);
+  if(pe<0 || pe>b.Length-24 || BitConverter.ToUInt32(b,pe)!=0x4550 || BitConverter.ToUInt16(b,pe+4)!=0x8664) throw new InvalidDataException("Invalid x64 PE header");
+  int count=BitConverter.ToUInt16(b,pe+6), table=pe+24+BitConverter.ToUInt16(b,pe+20);
+  if(table<0 || table>b.Length || count>(b.Length-table)/40) throw new InvalidDataException("Invalid PE sections");
+  byte[] message=Encoding.ASCII.GetBytes("end of life reached, please update: ");
+  int msg=-1;
+  for(int k=0;k<=b.Length-message.Length;k++) {
+   if(b[k]!=message[0]) continue;
+   int n=1;while(n<message.Length && b[k+n]==message[n])n++;
+   if(n==message.Length){msg=k;break;}
+  }
+  if(msg<0) throw new InvalidDataException("Cannot locate patcher support limit");
+  long msgRva=-1;int codeRva=0,codeRaw=0,codeSize=0;
+  for(int k=0;k<count;k++) {
+   int e=table+k*40;
+   int rva=BitConverter.ToInt32(b,e+12), size=BitConverter.ToInt32(b,e+16), raw=BitConverter.ToInt32(b,e+20);
+   if(raw<0 || size<0 || raw>b.Length || size>b.Length-raw) throw new InvalidDataException("Invalid PE section bounds");
+   if(msg>=raw && msg-raw<size)msgRva=(long)rva+msg-raw;
+   if(Encoding.ASCII.GetString(b,e,8).TrimEnd('\0')==".text"){codeRva=rva;codeRaw=raw;codeSize=size;}
+  }
+  if(msgRva<0 || codeSize==0)throw new InvalidDataException("Missing PE code section");
+  for(int i=0;i<codeSize-7;i++) {
+   int at=codeRaw+i;
+   if((b[at]!=0x48 && b[at]!=0x4c)||b[at+1]!=0x8d||(b[at+2]&0xc7)!=5)continue;
+   long delta=msgRva-((long)codeRva+i+7+BitConverter.ToInt32(b,at+3));
+   if(delta<0 || delta>16)continue;
+   for(int j=i-11;j>=Math.Max(0,i-256);j--) {
+    int p=codeRaw+j;
+    if(b[p]==0x3d && b[p+5]==0x0f && b[p+6]==0x86) {
+     uint value=BitConverter.ToUInt32(b,p+1);
+     if(value<1577836800 || value>4102444800)throw new InvalidDataException("Unrecognized support timestamp");
+     return value;
+    }
+   }
+  }
+  throw new InvalidDataException("Cannot read patcher support limit; no changes made");
+ }
+}
+'@
+}
+function Read-DllEol([string]$Path) { return [RosePatcherPeReaderV12]::ReadEol($Path) }
+
 function Hash-File([string]$Path) { (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant() }
 function Assert-Hash([string]$Path,[string]$Expected) {
  if((Hash-File $Path) -ne $Expected){throw (L "File checksum mismatch; stopped: $Path" "檔案雜湊不符，已停止：$Path")}
@@ -187,10 +275,10 @@ function Is-Admin {
 function Invoke-Elevated([string]$Operation,[string]$Rose,[string]$Game,[string]$Root) {
  New-Item -ItemType Directory -Path $Root -Force | Out-Null
  $result=Join-Path $Root ('result_'+[guid]::NewGuid().ToString('N')+'.json')
- $launchArgs=@('-NoProfile','-ExecutionPolicy','Bypass','-File',('"'+$PSCommandPath+'"'),'-Action',$Operation,'-Language',$script:Language,'-RosePath',('"'+$Rose+'"'),'-DataRoot',('"'+$Root+'"'),'-Child','-ResultFile',('"'+$result+'"'))
+ $launchArgs=@('-NoProfile','-ExecutionPolicy','Bypass','-File',('"'+$script:RunnerPath+'"'),'-Action',$Operation,'-Language',$script:Language,'-RosePath',('"'+$Rose+'"'),'-DataRoot',('"'+$Root+'"'),'-Child','-ResultFile',('"'+$result+'"'))
  if($Game){$launchArgs+=@('-GamePath',('"'+$Game+'"'))}
  Write-Host (L 'Ready. Windows will request administrator permission to update the Rose installation folder.' '已備妥；Windows 即將確認管理員權限，以更新 Rose 安裝資料夾。')
- $p=Start-Process -FilePath powershell.exe -Verb RunAs -WindowStyle Hidden -ArgumentList $launchArgs -PassThru -Wait
+ $p=Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe') -Verb RunAs -WindowStyle Hidden -ArgumentList $launchArgs -PassThru -Wait
  if(-not (Test-Path -LiteralPath $result)){throw (L 'The administrator operation did not complete. Check the Windows permission prompt.' '管理員操作未完成，請檢查 Windows 權限確認。')}
  $r=Get-Content -LiteralPath $result -Raw | ConvertFrom-Json
  if($r.status -ne 'success'){throw $r.message}
@@ -248,31 +336,83 @@ function Invoke-Operation([string]$Operation,[string]$Rose,[string]$Game,[string
   return (L 'Restore complete. Both original files have been verified.' '還原成功，已核對兩個原檔。')
  }
 }
-if($MyInvocation.InvocationName -eq '.'){return}
-if(-not $DataRoot){$DataRoot=Join-Path $env:LOCALAPPDATA 'RosePatcherFix'}
-try{
- if($Action -eq 'Menu'){
-  Write-Host (L 'Rose Patcher Quick Fix 1.3 (LTK 1.29.1)' 'Rose 補丁相容性工具 1.3（LTK 1.29.1）') -ForegroundColor Cyan
-  Write-Host (L 'Uses the verified official LTK 1.29.1 pair. Game date and signatures are checked; skins still require an in-game test.' '使用已核對的官方 LTK 1.29.1 配套檔案。會檢查遊戲建置與簽章；造型效果仍需進遊戲實測。')
-  while($true){
-   Write-Host '';Write-Host (L '1 Check    2 Download and apply    3 Restore originals    L Language    0 Exit' '1 檢查版本    2 下載並套用    3 還原原檔    L 語言    0 離開')
-   $choice=Read-Host (L 'Choose' '選擇');if($choice -eq '0'){break}
-   if($choice -eq 'L'){
-    if($script:Language -eq 'en'){$script:Language='zh-TW'}else{$script:Language='en'}
-    Write-Host (L 'Language: English' '語言：繁體中文') -ForegroundColor Cyan
-    continue
-   }
-   $op=switch($choice){'1'{'Check'}'2'{'Apply'}'3'{'Restore'}default{''}}
-   if(-not $op){continue}
-   try{Write-Host (Invoke-Operation $op $RosePath $GamePath $DataRoot) -ForegroundColor Green}
-   catch{Write-Host $_.Exception.Message -ForegroundColor Yellow}
-  }
- } else{
-  $message=Invoke-Operation $Action $RosePath $GamePath $DataRoot
-  if($Child){Save-Json @{status='success';message=$message} $ResultFile}else{Write-Host $message -ForegroundColor Green}
+function Assert-NoMatch {
+ if(Get-Process -Name 'League of Legends' -ErrorAction SilentlyContinue){throw (L 'A match is running. No files changed. Finish the match and try again.' '目前正在對局中，未更動檔案。請結束對局後再執行。')}
+}
+function Invoke-QuickFix([string]$Operation) {
+ $script:Wanted=$script:TargetHashes.Clone()
+ $selectedRose=Resolve-Rose $RosePath
+ $selectedRoot=$DataRoot
+ if(-not $selectedRoot){$selectedRoot=Join-Path $env:LOCALAPPDATA 'RosePatcherFix'}
+ if($Operation -ne 'Restore'){
+  $selectedGame=Resolve-Game $GamePath
+  $null=Assert-Compatible $selectedGame
+ } else {$selectedGame=''}
+ if($Operation -eq 'Check'){return (Invoke-Operation Check $selectedRose $selectedGame $selectedRoot)}
+ Assert-NoMatch
+ $selectedTools=Join-Path $selectedRose '_internal\injection\tools'
+ $running=@(Get-Process -Name Rose -ErrorAction SilentlyContinue)
+ foreach($app in $running){
+  if($app.Path -ine (Join-Path $selectedRose 'Rose.exe')){throw (L 'Another Rose installation is running. No programs closed or files changed.' '另有不同路徑的 Rose 正在執行，未關閉或更換檔案。')}
  }
-} catch{
+ if($Operation -eq 'Apply'){
+  if((Test-Installed $selectedTools) -and $running.Count -gt 0){
+   foreach($n in $script:Names){Assert-Signed (Join-Path $selectedTools $n)}
+   return (L 'The tested official LTK 1.29.1 pair is already installed and Rose is running. No files changed.' '目前已是通過實測的官方 LTK 1.29.1 組合，Rose 正在執行，不需要重複替換。')
+  }
+  $null=Prepare-Files $selectedRoot
+ } else {$null=Find-Backup $selectedRoot $selectedRose}
+ if(-not (Is-Admin)){
+  if($Child){throw (L 'Administrator permission was not granted.' '未取得管理員權限。')}
+  Invoke-Elevated $Operation $selectedRose $selectedGame $selectedRoot
+  return
+ }
+ Assert-NoMatch
+ foreach($app in $running){
+  Assert-NoMatch
+  if($app.MainWindowHandle -ne [IntPtr]::Zero){$null=$app.CloseMainWindow();$null=$app.WaitForExit(2500)}
+  $app.Refresh()
+  if(-not $app.HasExited){Stop-Process -Id $app.Id -ErrorAction Stop;$null=$app.WaitForExit(5000)}
+ }
+ Assert-NoMatch
+ $message=Invoke-Operation $Operation $selectedRose $selectedGame $selectedRoot
+ $null=Start-Process -FilePath (Join-Path $selectedRose 'Rose.exe') -WorkingDirectory $selectedRose -WindowStyle Normal -PassThru
+ return ($message+(L ' Rose has restarted; verify the skin in Practice Tool.' ' Rose 已重新開啟；請進訓練模式確認造型。'))
+}
+if($MyInvocation.InvocationName -eq '.'){return}
+if($Action -eq 'Menu'){
+ while($true){
+  Write-Host ''
+  Write-Host 'Rose Patcher Quick Fix v1.3 - Single CMD' -ForegroundColor Cyan
+  Write-Host (L '1  Repair automatically' '1  一鍵修復')
+  Write-Host (L '2  Restore backup' '2  還原備份')
+  Write-Host (L '3  Check installed files' '3  檢查目前版本')
+  Write-Host 'L  English / 繁體中文'
+  Write-Host (L '0  Exit' '0  離開')
+  $choice=Read-Host (L 'Choose' '請選擇')
+  if($choice -eq '0' -or ([Console]::IsInputRedirected -and [string]::IsNullOrEmpty($choice))){break}
+  if($choice -eq 'L'){
+   if($script:Language -eq 'en'){$script:Language='zh-TW'}else{$script:Language='en'}
+   continue
+  }
+  $operation=switch($choice){'1'{'Apply'}'2'{'Restore'}'3'{'Check'}default{''}}
+  if(-not $operation){continue}
+  try{
+   $message=Invoke-QuickFix $operation
+   if($message){Write-Host $message -ForegroundColor Green}
+  }catch{Write-Host $_.Exception.Message -ForegroundColor Red}
+  $null=Read-Host (L 'Press Enter to return to the menu' '按 Enter 返回選單')
+ }
+ exit 0
+}
+try{
+ $message=Invoke-QuickFix $Action
+ if($Child){Save-Json @{status='success';message=$message} $ResultFile}
+ elseif($message){Write-Host $message -ForegroundColor Green}
+ exit 0
+}catch{
  if($Child -and $ResultFile){Save-Json @{status='failed';message=$_.Exception.Message} $ResultFile}
- else{Write-Error $_.Exception.Message}
+ else{Write-Host $_.Exception.Message -ForegroundColor Red}
  exit 1
 }
+

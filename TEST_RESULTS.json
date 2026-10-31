@@ -1,36 +1,27 @@
 {
-  "scope": "Core replacement tests used isolated fixtures. Wrapper checks verified game guard, English output, and no-op behavior against the installed pair.",
-  "status": "PASS",
-  "tests": [
-    {
-      "result": "PASS",
-      "name": "Official installer extraction, exact checksums, publisher signatures and game date verified"
-    },
-    {
-      "result": "PASS",
-      "name": "Reject game builds beyond the verified release support limit"
-    },
-    {
-      "result": "PASS",
-      "name": "Back up current files and atomically apply the candidate to an isolated fixture"
-    },
-    {
-      "result": "PASS",
-      "name": "Restore original hashes from manifest and reset target selection for the next operation"
-    },
-    {
-      "result": "PASS",
-      "name": "Roll back both files if the host cannot be replaced"
-    },
-    {
-      "name": "One-click wrapper refuses an active match before download, elevation or file changes",
-      "result": "PASS"
-    },
-    {
-      "name": "Reapplying the correct pair is a no-op and does not create duplicate backups",
-      "result": "PASS"
-    }
-  ],
-  "count": 7,
-  "in_game": "PASS: one Rose 1.4.9 / zh_TW PC, Blitzcrank 53056, 2026-10-31; overlay verification and redirects logged, user confirmed visible."
+    "scope":  "Standalone Windows CMD launch and Windows PowerShell 5.1 isolated fixture tests. UAC and Rose process launches simulated; live Rose unchanged.",
+    "version":  "1.3 single CMD",
+    "launcher_checks":  4,
+    "runtime_checks":  20,
+    "date":  "2026-10-31",
+    "package_files":  [
+                          "Rose_Quick_Fix.cmd",
+                          "README.txt"
+                      ],
+    "status":  "PASS",
+    "tests":  [
+                  "Standalone CMD without companion files",
+                  "Chinese and special-character paths",
+                  "Language switch",
+                  "Temporary runner cleanup",
+                  "Corrupt payload rejected",
+                  "Embedded runtime parses",
+                  "Official hashes and support limit preserved",
+                  "Active-match guard",
+                  "Backup/apply/restore and apply after restore",
+                  "Locked-file rollback",
+                  "Future game build rejection",
+                  "Child runtime path and parameter compatibility"
+              ],
+    "in_game":  "No new game test for packaging. Original LTK 1.29.1 pair was verified in Practice Tool on 2026-10-31; see COMPATIBILITY.json."
 }
